@@ -1,0 +1,22 @@
+### Select a class race
+POST http://localhost:3000/api/characters/1/races
+Content-Type: application/json
+
+{
+  "contentId": 6
+}
+
+### Create a class race
+POST http://localhost:3000/api/class/1/races
+Content-Type: application/json
+
+{
+  "name": "Draconic",
+  "description": "Draconic race description",
+  "hitPoints": 10,
+  "appearance": [
+    "Ojos: blancos y penetrantes",
+    "Cabello: negro y largo",
+    "Cuerpo: musculoso",
+    "Ropa: armadura desgastada"
+  ]

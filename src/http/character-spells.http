@@ -1,0 +1,16 @@
+### Get available spells
+GET http://localhost:3000/api/characters/7/spells/available
+
+### Get character spells
+GET http://localhost:3000/api/characters/7/spells
+
+### Add a spell
+POST http://localhost:3000/api/characters/7/spells/
+Content-Type: application/json
+
+[
+  5
+]
+
+### Remove a spell
+DELETE http://localhost:3000/api/characters/7/spells/4

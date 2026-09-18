@@ -1,0 +1,10 @@
+### Select a class equipment
+POST http://localhost:3000/api/characters/5/equipment
+Content-Type: application/json
+
+{
+  "contentIds": [
+    7,
+    10
+  ]
+}

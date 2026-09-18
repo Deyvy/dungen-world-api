@@ -1,0 +1,28 @@
+### Get available moves
+GET http://localhost:3000/api/characters/4/moves/available
+
+### Get a move
+GET http://localhost:3000/api/characters/4/moves/8
+
+### Select a move
+POST http://localhost:3000/api/characters/4/moves/9
+
+### Select move options
+PUT http://localhost:3000/api/characters/4/moves/8
+Content-Type: application/json
+
+{
+  "elements": [
+    {
+      "elementId": 4,
+      "value": "Puntero telescópico"
+    },
+    {
+      "elementId": 6,
+      "optionIds": [
+        11,
+        12
+      ]
+    }
+  ]
+}

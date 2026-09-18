@@ -1,0 +1,57 @@
+### Get all characters
+GET http://localhost:3000/api/characters
+
+### Get a character
+GET http://localhost:3000/api/characters/4
+
+### Create a character
+POST http://localhost:3000/api/characters
+Content-Type: application/json
+
+{
+  "name": "Tamagotchi",
+  "classId": 1,
+  "appearance": [
+    "Ojos: chiquiticos",
+    "Cabello: despeluchao",
+    "Cuerpo: sin cuello y apretao",
+    "Ropa: armadura desgastada de Oedo"
+  ],
+  "strength": 16,
+  "dexterity": 13,
+  "constitution": 15,
+  "intelligence": 8,
+  "wisdom": 10,
+  "charisma": 9
+}
+
+### Update a character
+PATCH http://localhost:3000/api/characters/4
+Content-Type: application/json
+
+{
+  "name": "Viktor Kraken",
+  "appearance": [
+    "Ojos: viejitos",
+    "Cabello: blanco",
+    "Cuerpo: tirillas",
+    "Ropa: bata desgastada"
+  ]
+}
+
+### Level up
+POST http://localhost:3000/api/characters/1/level-up
+Content-Type: application/json
+
+{
+  "stat": "constitution",
+  "moveId": 11
+}
+
+### Heal or damage
+PATCH http://localhost:3000/api/characters/1/heal-or-damage
+Content-Type: application/json
+
+{
+  "hpChange": 2
+}

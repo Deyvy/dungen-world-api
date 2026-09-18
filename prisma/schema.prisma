@@ -1,0 +1,228 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model characterBonds {
+  id           Int        @id @default(autoincrement())
+  character_id Int
+  text         String     @db.Text
+  is_example   Boolean?   @default(false)
+  created_at   DateTime   @default(now()) @db.Timestamp(0)
+  characters   characters @relation(fields: [character_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_bond_character")
+
+  @@index([character_id], map: "fk_bond_character")
+  @@map("character_bonds")
+}
+
+model characterContent {
+  characterId  Int          @map("character_id")
+  contentId    Int          @map("content_id")
+  acquired_at  DateTime     @default(now()) @db.Timestamp(0)
+  characters   characters   @relation(fields: [characterId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_content_character")
+  classContent classContent @relation(fields: [contentId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_content_content")
+
+  @@id([characterId, contentId])
+  @@index([contentId], map: "fk_character_content_content")
+  @@map("character_content")
+}
+
+model characterElementOptions {
+  characterId          Int             @map("character_id")
+  elementId            Int             @map("element_id")
+  optionId             Int             @map("option_id")
+  characters            characters            @relation(fields: [characterId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_option_character")
+  contentElements       contentElements       @relation(fields: [elementId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_option_element")
+  contentElementOptions contentElementOptions @relation(fields: [optionId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_option_option")
+
+  @@id([characterId, elementId, optionId])
+  @@index([elementId], map: "fk_character_option_element")
+  @@index([optionId], map: "fk_character_option_option")
+  @@map("character_element_options")
+}
+
+model characterElementValues {
+  id              Int             @id @default(autoincrement())
+  characterId     Int             @map("character_id")
+  elementId       Int             @map("element_id")
+  value           String?         @db.Text
+  characters      characters      @relation(fields: [characterId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_value_character")
+  contentElements contentElements @relation(fields: [elementId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_value_element")
+
+  @@unique([characterId, elementId])
+  @@index([characterId], map: "fk_value_character")
+  @@index([elementId], map: "fk_value_element")
+  @@map("character_element_values")
+}
+
+model characterSpells {
+  characterId  Int        @map("character_id")
+  spellId      Int        @map("spell_id")
+  known        Boolean?   @default(true)
+  prepared     Boolean?   @default(false)
+  characters   characters @relation(fields: [characterId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_spell_character")
+  spells       spells     @relation(fields: [spellId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_spell_spell")
+
+  @@id([characterId, spellId])
+  @@index([spellId], map: "fk_character_spell_spell")
+  @@map("character_spells")
+}
+
+model characters {
+  id                   Int                       @id @default(autoincrement())
+  classId              Int                       @map("class_id")
+  name                 String                    @db.VarChar(100)
+  level                Int?                      @default(1) @db.TinyInt
+  hpCurrent            Int?                      @db.TinyInt @map("hp_current")
+  strength             Int?                      @db.TinyInt
+  dexterity            Int?                      @db.TinyInt
+  constitution         Int?                      @db.TinyInt
+  intelligence         Int?                      @db.TinyInt
+  wisdom               Int?                      @db.TinyInt
+  charisma             Int?                      @db.TinyInt
+  createdAt            DateTime                  @default(now()) @db.Timestamp(0) @map("created_at")
+  appearance           characterAppearance[]
+  bonds                characterBonds[]
+  content              characterContent[]
+  elementOptions       characterElementOptions[]
+  elementValues        characterElementValues[]
+  spells               characterSpells[]
+  class                classes                   @relation(fields: [classId], references: [id], onUpdate: Restrict, map: "fk_character_class")
+
+  @@index([classId], map: "fk_character_class")
+  @@map("characters")
+}
+
+model classContent {
+  id               Int                   @id @default(autoincrement())
+  classId          Int                   @map("class_id")
+  type             classContentType
+  title            String                @db.VarChar(255)
+  code             String?               @db.VarChar(100)
+  slug             String?               @unique(map: "slug") @db.VarChar(150)
+  content          String?               @db.MediumText
+  moveType         classContentMoveType? @map("move_type")
+  levelRequired    Int?                  @db.TinyInt @map("level_required")
+  metadata         String?               @db.LongText
+  isActive         Boolean?              @default(true) @map("is_active")
+  sortOrder        Int?                  @default(0) @map("sort_order")
+  version          Int?                  @default(1)
+  created_at       DateTime              @default(now()) @db.Timestamp(0)
+  characterContent characterContent[]
+  class            classes               @relation(fields: [classId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_content_class")
+  contentElements  contentElements[]
+
+  @@index([classId], map: "fk_content_class")
+  @@map("class_content")
+}
+
+model classes {
+  id          Int            @id @default(autoincrement())
+  name        String         @db.VarChar(100)
+  description String?        @db.Text
+  appearance  String?        @db.Text
+  hitPoints   Int            @db.TinyInt @map("hit_points")
+  createdAt   DateTime       @default(now()) @db.Timestamp(0) @map("created_at")
+  characters  characters[]
+  contents    classContent[]
+  spellLists  spellLists[]
+}
+
+model contentElementOptions {
+  id                      Int                       @id @default(autoincrement())
+  element_id              Int
+  label                   String                    @db.VarChar(255)
+  value                   String?                   @db.VarChar(255)
+  sortOrder               Int?                      @default(0) @map("sort_order")
+  characterElementOptions characterElementOptions[]
+  contentElements         contentElements           @relation(fields: [element_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_option_element")
+
+  @@index([element_id], map: "fk_option_element")
+  @@map("content_element_options")
+}
+
+model contentElements {
+  id                      Int                       @id @default(autoincrement())
+  contentId               Int                       @map("content_id")
+  type                    contentElementsType
+  label                   String                    @db.VarChar(255)
+  code                    String?                   @db.VarChar(100)
+  min_select              Int?                      @db.TinyInt
+  max_select              Int?                      @db.TinyInt
+  metadata                String?                   @db.LongText
+  sortOrder               Int?                      @default(0) @map("sort_order")
+  characterElementOptions characterElementOptions[]
+  characterElementValues  characterElementValues[]
+  contentElementOptions   contentElementOptions[]
+  classContent            classContent              @relation(fields: [contentId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_element_content")
+
+  @@index([contentId], map: "fk_element_content")
+  @@map("content_elements")
+}
+
+model spellLists {
+  id          Int      @id @default(autoincrement())
+  classId     Int      @map("class_id")
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  classes     classes  @relation(fields: [classId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_spell_list_class")
+  spells      spells[]
+
+  @@index([classId], map: "fk_spell_list_class")
+  @@map("spell_lists")
+}
+
+model spells {
+  id              Int               @id @default(autoincrement())
+  spellListId     Int               @map("spell_list_id")
+  name            String            @db.VarChar(150)
+  slug            String?           @unique(map: "slug") @db.VarChar(150)
+  spellLevel      Int               @db.TinyInt @map("spell_level")
+  description     String?           @db.MediumText
+  metadata        String?           @db.LongText
+  isActive        Boolean?          @default(true)     @map("is_active")
+  sortOrder       Int?              @default(0)        @map("sort_order")
+  characterSpells characterSpells[]
+  spellLists      spellLists        @relation(fields: [spellListId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_spell_list")
+
+  @@index([spellListId], map: "fk_spell_list")
+}
+
+model characterAppearance {
+  @@map("character_appearance")
+
+  id           Int        @id @default(autoincrement())
+  character_id Int
+  content      String     @db.Text
+  sortOrder    Int        @default(0) @map("sort_order")
+  characters   characters @relation(fields: [character_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_appearance_character")
+
+  @@index([character_id], map: "fk_character_appearance_character")
+}
+
+enum classContentType {
+  ALIGNMENT
+  RACE
+  MOVE
+  EQUIPMENT
+}
+
+enum contentElementsType {
+  TEXT
+  TEXTAREA
+  NUMBER
+  BOOLEAN
+  CHECKBOX_GROUP
+  RADIO_GROUP
+  SELECT
+}
+
+enum classContentMoveType {
+  INITIAL
+  ADVANCED
+}

@@ -1,0 +1,7 @@
+### Select a class alignment
+POST http://localhost:3000/api/characters/5/alignments
+Content-Type: application/json
+
+{
+  "contentId": 3
+}
