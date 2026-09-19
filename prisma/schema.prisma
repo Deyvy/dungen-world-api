@@ -12,7 +12,6 @@ model characterBonds {
   id           Int        @id @default(autoincrement())
   character_id Int
   text         String     @db.Text
-  is_example   Boolean?   @default(false)
   created_at   DateTime   @default(now()) @db.Timestamp(0)
   characters   characters @relation(fields: [character_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_bond_character")
 
@@ -32,10 +31,23 @@ model characterContent {
   @@map("character_content")
 }
 
+model characterEquipment {
+  characterId   Int        @map("character_id")
+  equipmentId   Int        @map("equipment_id")
+  quantity      Int        @default(1)
+  usesRemaining Int?       @map("uses_remaining")
+  characters    characters @relation(fields: [characterId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_equipment_character")
+  equipment     equipment  @relation(fields: [equipmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_character_equipment_equipment")
+
+  @@id([characterId, equipmentId])
+  @@index([equipmentId], map: "fk_character_equipment_equipment")
+  @@map("character_equipment")
+}
+
 model characterElementOptions {
-  characterId          Int             @map("character_id")
-  elementId            Int             @map("element_id")
-  optionId             Int             @map("option_id")
+  characterId           Int                   @map("character_id")
+  elementId             Int                   @map("element_id")
+  optionId              Int                   @map("option_id")
   characters            characters            @relation(fields: [characterId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_option_character")
   contentElements       contentElements       @relation(fields: [elementId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_option_element")
   contentElementOptions contentElementOptions @relation(fields: [optionId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_option_option")
@@ -61,12 +73,10 @@ model characterElementValues {
 }
 
 model characterSpells {
-  characterId  Int        @map("character_id")
-  spellId      Int        @map("spell_id")
-  known        Boolean?   @default(true)
-  prepared     Boolean?   @default(false)
-  characters   characters @relation(fields: [characterId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_spell_character")
-  spells       spells     @relation(fields: [spellId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_spell_spell")
+  characterId Int        @map("character_id")
+  spellId     Int        @map("spell_id")
+  characters  characters @relation(fields: [characterId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_spell_character")
+  spells      spells     @relation(fields: [spellId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_spell_spell")
 
   @@id([characterId, spellId])
   @@index([spellId], map: "fk_character_spell_spell")
@@ -74,25 +84,26 @@ model characterSpells {
 }
 
 model characters {
-  id                   Int                       @id @default(autoincrement())
-  classId              Int                       @map("class_id")
-  name                 String                    @db.VarChar(100)
-  level                Int?                      @default(1) @db.TinyInt
-  hpCurrent            Int?                      @db.TinyInt @map("hp_current")
-  strength             Int?                      @db.TinyInt
-  dexterity            Int?                      @db.TinyInt
-  constitution         Int?                      @db.TinyInt
-  intelligence         Int?                      @db.TinyInt
-  wisdom               Int?                      @db.TinyInt
-  charisma             Int?                      @db.TinyInt
-  createdAt            DateTime                  @default(now()) @db.Timestamp(0) @map("created_at")
-  appearance           characterAppearance[]
-  bonds                characterBonds[]
-  content              characterContent[]
-  elementOptions       characterElementOptions[]
-  elementValues        characterElementValues[]
-  spells               characterSpells[]
-  class                classes                   @relation(fields: [classId], references: [id], onUpdate: Restrict, map: "fk_character_class")
+  id             Int                       @id @default(autoincrement())
+  classId        Int                       @map("class_id")
+  name           String                    @db.VarChar(100)
+  level          Int?                      @default(1) @db.TinyInt
+  hpCurrent      Int?                      @map("hp_current") @db.TinyInt
+  strength       Int?                      @db.TinyInt
+  dexterity      Int?                      @db.TinyInt
+  constitution   Int?                      @db.TinyInt
+  intelligence   Int?                      @db.TinyInt
+  wisdom         Int?                      @db.TinyInt
+  charisma       Int?                      @db.TinyInt
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamp(0)
+  appearance     characterAppearance[]
+  bonds          characterBonds[]
+  content        characterContent[]
+  equipment      characterEquipment[]
+  elementOptions characterElementOptions[]
+  elementValues  characterElementValues[]
+  spells         characterSpells[]
+  class          classes                   @relation(fields: [classId], references: [id], onUpdate: Restrict, map: "fk_character_class")
 
   @@index([classId], map: "fk_character_class")
   @@map("characters")
@@ -103,22 +114,37 @@ model classContent {
   classId          Int                   @map("class_id")
   type             classContentType
   title            String                @db.VarChar(255)
-  code             String?               @db.VarChar(100)
-  slug             String?               @unique(map: "slug") @db.VarChar(150)
   content          String?               @db.MediumText
   moveType         classContentMoveType? @map("move_type")
-  levelRequired    Int?                  @db.TinyInt @map("level_required")
+  levelRequired    Int?                  @map("level_required") @db.TinyInt
   metadata         String?               @db.LongText
   isActive         Boolean?              @default(true) @map("is_active")
   sortOrder        Int?                  @default(0) @map("sort_order")
-  version          Int?                  @default(1)
+  equipmentId      Int?                  @map("equipment_id")
   created_at       DateTime              @default(now()) @db.Timestamp(0)
   characterContent characterContent[]
   class            classes               @relation(fields: [classId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_content_class")
   contentElements  contentElements[]
+  equipment        equipment?            @relation(fields: [equipmentId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_class_content_equipment")
 
   @@index([classId], map: "fk_content_class")
+  @@index([equipmentId], map: "fk_class_content_equipment")
   @@map("class_content")
+}
+
+model equipment {
+  id           Int                  @id @default(autoincrement())
+  name         String               @db.VarChar(150)
+  description  String?              @db.Text
+  metadata     String?              @db.LongText
+  isActive     Boolean?             @default(true) @map("is_active")
+  sortOrder    Int?                 @default(0) @map("sort_order")
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamp(0)
+  classContent classContent[]
+  characters   characterEquipment[]
+
+  @@index([isActive], map: "idx_equipment_active")
+  @@map("equipment")
 }
 
 model classes {
@@ -126,8 +152,8 @@ model classes {
   name        String         @db.VarChar(100)
   description String?        @db.Text
   appearance  String?        @db.Text
-  hitPoints   Int            @db.TinyInt @map("hit_points")
-  createdAt   DateTime       @default(now()) @db.Timestamp(0) @map("created_at")
+  hitPoints   Int            @map("hit_points") @db.TinyInt
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamp(0)
   characters  characters[]
   contents    classContent[]
   spellLists  spellLists[]
@@ -182,11 +208,11 @@ model spells {
   spellListId     Int               @map("spell_list_id")
   name            String            @db.VarChar(150)
   slug            String?           @unique(map: "slug") @db.VarChar(150)
-  spellLevel      Int               @db.TinyInt @map("spell_level")
+  spellLevel      Int               @map("spell_level") @db.TinyInt
   description     String?           @db.MediumText
   metadata        String?           @db.LongText
-  isActive        Boolean?          @default(true)     @map("is_active")
-  sortOrder       Int?              @default(0)        @map("sort_order")
+  isActive        Boolean?          @default(true) @map("is_active")
+  sortOrder       Int?              @default(0) @map("sort_order")
   characterSpells characterSpells[]
   spellLists      spellLists        @relation(fields: [spellListId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_spell_list")
 
@@ -194,8 +220,6 @@ model spells {
 }
 
 model characterAppearance {
-  @@map("character_appearance")
-
   id           Int        @id @default(autoincrement())
   character_id Int
   content      String     @db.Text
@@ -203,6 +227,7 @@ model characterAppearance {
   characters   characters @relation(fields: [character_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_appearance_character")
 
   @@index([character_id], map: "fk_character_appearance_character")
+  @@map("character_appearance")
 }
 
 enum classContentType {
