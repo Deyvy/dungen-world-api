@@ -1,21 +1,34 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateCharacterDto } from './dto/create-character.dto';
 import { UpdateCharacterDto } from './dto/update-character.dto';
 import { Character } from './entities/character.entity';
 import { PrismaService } from '../../database/prisma/prisma.service';
 import { CharacterMapper } from './mappers/character.mapper';
 import { SelectRaceDto } from './dto/select-race.dto';
-import { classContentMoveType, classContentType } from '../../generated/prisma/enums';
+import {
+  classContentMoveType,
+  classContentType,
+} from '../../generated/prisma/enums';
 import { SelectEquipmentDto } from './dto/select-equipment.dto';
 import { MoveMapper } from './mappers/move.mapper';
 import { SelectMoveDto } from './dto/select-move.dto';
 import { UpdateMoveDto } from './dto/update-move.dto';
 import { LevelUpDto } from './dto/level-up.dto';
+import { AddEquipmentDto } from './dto/add-equipment.dto';
+import { EquipmentMapper } from '../equipment/mappers/equipment.mapper';
+import { CharacterEquipmentMapper } from './mappers/character-equipment.mapper';
+import { CreateBondDto } from './dto/create-bond.dto';
+import { UpdateBondDto } from './dto/update-bond.dto';
+import { CharacterBondMapper } from './mappers/character-bond.mapper';
 
 @Injectable()
 export class CharacterService {
   constructor(private prisma: PrismaService) {}
-  
+
   async create(createCharacterDto: CreateCharacterDto) {
     const playerClass = await this.prisma.classes.findUniqueOrThrow({
       where: {
@@ -43,10 +56,11 @@ export class CharacterService {
           wisdom: createCharacterDto.wisdom,
           charisma: createCharacterDto.charisma,
           appearance: {
-            create: createCharacterDto.appearance?.map((content, index) => ({
-              content,
-              sortOrder: index,
-            })) ?? [],
+            create:
+              createCharacterDto.appearance?.map((content, index) => ({
+                content,
+                sortOrder: index,
+              })) ?? [],
           },
         },
 
@@ -57,11 +71,12 @@ export class CharacterService {
       });
 
       await tx.characterAppearance.createMany({
-        data: createCharacterDto.appearance?.map((content, index) => ({
-          character_id: character.id,
-          content,
-          sortOrder: index,
-        })) ?? [],
+        data:
+          createCharacterDto.appearance?.map((content, index) => ({
+            character_id: character.id,
+            content,
+            sortOrder: index,
+          })) ?? [],
       });
 
       const initialMoves = await tx.classContent.findMany({
@@ -96,9 +111,8 @@ export class CharacterService {
           },
         },
       });
-
     });
-    
+
     return CharacterMapper.toResponse(result);
   }
 
@@ -130,13 +144,10 @@ export class CharacterService {
     const character = await this.prisma.characters.findUniqueOrThrow({
       where: {
         id,
-      }
+      },
     });
 
-    const {
-      appearance,
-      ...characterData
-    } = updateCharacterDto;
+    const { appearance, ...characterData } = updateCharacterDto;
 
     const updatedCharacter = await this.prisma.$transaction(async (tx) => {
       await tx.characters.update({
@@ -160,7 +171,6 @@ export class CharacterService {
             sortOrder: index,
           })),
         });
-
       }
 
       return tx.characters.findUnique({
@@ -172,7 +182,6 @@ export class CharacterService {
           appearance: true,
         },
       });
-
     });
 
     return CharacterMapper.toResponse(updatedCharacter);
@@ -213,7 +222,9 @@ export class CharacterService {
     });
 
     if (classContent.classId !== character.classId) {
-      throw new BadRequestException('La raza no pertenece a la clase del personaje');
+      throw new BadRequestException(
+        'La raza no pertenece a la clase del personaje',
+      );
     }
 
     await this.prisma.characterContent.create({
@@ -226,7 +237,10 @@ export class CharacterService {
     return this.findOne(characterId);
   }
 
-  async selectAlignment(characterId: number, selectAlignmentDto: SelectRaceDto) {
+  async selectAlignment(
+    characterId: number,
+    selectAlignmentDto: SelectRaceDto,
+  ) {
     const character = await this.prisma.characters.findUniqueOrThrow({
       where: {
         id: characterId,
@@ -246,7 +260,9 @@ export class CharacterService {
     });
 
     if (existingAlignment.length > 0) {
-      throw new BadRequestException('Ya existe un alineamiento para este personaje');
+      throw new BadRequestException(
+        'Ya existe un alineamiento para este personaje',
+      );
     }
 
     const classContent = await this.prisma.classContent.findUniqueOrThrow({
@@ -257,7 +273,9 @@ export class CharacterService {
     });
 
     if (classContent.classId !== character.classId) {
-      throw new BadRequestException('El alineamiento no pertenece a la clase del personaje');
+      throw new BadRequestException(
+        'El alineamiento no pertenece a la clase del personaje',
+      );
     }
 
     await this.prisma.characterContent.create({
@@ -270,58 +288,177 @@ export class CharacterService {
     return this.findOne(characterId);
   }
 
-  async selectEquipment(characterId: number, selectEquipmentDto: SelectEquipmentDto) {
+  async selectEquipment(
+    characterId: number,
+    selectEquipmentDto: SelectEquipmentDto,
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      const character = await tx.characters.findUniqueOrThrow({
+        where: { id: characterId },
+      });
+      const equipment = await tx.equipment.findMany({
+        where: {
+          id: { in: selectEquipmentDto.equipmentIds },
+          isActive: true,
+          classContent: {
+            some: {
+              classId: character.classId,
+              type: classContentType.EQUIPMENT,
+              isActive: true,
+            },
+          },
+        },
+      });
+
+      if (equipment.length !== selectEquipmentDto.equipmentIds.length) {
+        throw new NotFoundException(
+          'Uno o más elementos de equipo no existen o no pertenecen a la clase del personaje',
+        );
+      }
+
+      await tx.characterEquipment.deleteMany({ where: { characterId } });
+      await tx.characterEquipment.createMany({
+        data: equipment.map((item) => ({
+          characterId,
+          equipmentId: item.id,
+          quantity: 1,
+          usesRemaining: EquipmentMapper.toMetadata(item.metadata).usesPerUnit,
+        })),
+      });
+    });
+
+    return this.getCharacterEquipment(characterId);
+  }
+
+  async getAvailableEquipment(characterId: number) {
     const character = await this.prisma.characters.findUniqueOrThrow({
-      where: {
-        id: characterId,
-      },
-      include: {
-        class: true,
-      },
+      where: { id: characterId },
     });
-
-    const equipment = await this.prisma.classContent.findMany({
+    const options = await this.prisma.classContent.findMany({
       where: {
-        id: {
-          in: selectEquipmentDto.contentIds,
-        },
+        classId: character.classId,
         type: classContentType.EQUIPMENT,
+        isActive: true,
+        equipmentId: { not: null },
+        equipment: { is: { isActive: true } },
       },
+      include: { equipment: true },
+      orderBy: { sortOrder: 'asc' },
     });
 
-    if (equipment.length !== selectEquipmentDto.contentIds.length) {
-      throw new NotFoundException(
-        'Uno o más elementos de equipo no existen',
-      );
-    }
-  
-    const invalidClassContent = equipment.some(
-      (item) => item.classId !== character.classId,
+    return options.flatMap((option) =>
+      option.equipment
+        ? [
+            CharacterEquipmentMapper.toClassOption({
+              ...option.equipment,
+              classContentId: option.id,
+              title: option.title,
+              content: option.content,
+            }),
+          ]
+        : [],
     );
+  }
 
-    if (invalidClassContent) {
-      throw new BadRequestException(
-        'Uno o más elementos de equipo no pertenecen a la clase del personaje',
-      );
-    }
+  async getCharacterEquipment(characterId: number) {
+    await this.prisma.characters.findUniqueOrThrow({
+      where: { id: characterId },
+    });
+    const rows = await this.prisma.characterEquipment.findMany({
+      where: { characterId },
+      include: { equipment: true },
+      orderBy: { equipment: { name: 'asc' } },
+    });
+    return rows.map((row) => CharacterEquipmentMapper.toCharacterResponse(row));
+  }
 
-    await this.prisma.characterContent.deleteMany({
-      where: {
+  async addEquipment(
+    characterId: number,
+    equipmentId: number,
+    dto: AddEquipmentDto,
+  ) {
+    await this.prisma.characters.findUniqueOrThrow({
+      where: { id: characterId },
+    });
+    const equipment = await this.prisma.equipment.findFirstOrThrow({
+      where: { id: equipmentId, isActive: true },
+    });
+    const usesPerUnit = EquipmentMapper.toMetadata(
+      equipment.metadata,
+    ).usesPerUnit;
+
+    await this.prisma.characterEquipment.upsert({
+      where: { characterId_equipmentId: { characterId, equipmentId } },
+      create: {
         characterId,
-        classContent: {
-          type: classContentType.EQUIPMENT,
-        },
+        equipmentId,
+        quantity: dto.quantity,
+        usesRemaining: usesPerUnit,
       },
+      update: { quantity: { increment: dto.quantity } },
     });
 
-    await this.prisma.characterContent.createMany({
-      data: selectEquipmentDto.contentIds.map((contentId) => ({
-        characterId: characterId,
-        contentId,
-      })),
+    return this.getCharacterEquipment(characterId);
+  }
+
+  async removeEquipment(characterId: number, equipmentId: number) {
+    await this.prisma.$transaction(async (tx) => {
+      const row = await tx.characterEquipment.findUniqueOrThrow({
+        where: { characterId_equipmentId: { characterId, equipmentId } },
+      });
+
+      if (row.quantity > 1) {
+        await tx.characterEquipment.update({
+          where: { characterId_equipmentId: { characterId, equipmentId } },
+          data: { quantity: { decrement: 1 } },
+        });
+        return;
+      }
+
+      await tx.characterEquipment.delete({
+        where: { characterId_equipmentId: { characterId, equipmentId } },
+      });
+    });
+    return this.getCharacterEquipment(characterId);
+  }
+
+  async useEquipment(characterId: number, equipmentId: number) {
+    const result = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.characterEquipment.findUniqueOrThrow({
+        where: { characterId_equipmentId: { characterId, equipmentId } },
+        include: { equipment: true },
+      });
+      const usesPerUnit = EquipmentMapper.toMetadata(
+        row.equipment.metadata,
+      ).usesPerUnit;
+
+      if (!usesPerUnit) {
+        throw new BadRequestException('El equipo no es consumible');
+      }
+      if (row.usesRemaining === null || row.usesRemaining < 1) {
+        throw new BadRequestException(
+          'El equipo no tiene usos restantes válidos',
+        );
+      }
+
+      if (row.usesRemaining > 1) {
+        await tx.characterEquipment.update({
+          where: { characterId_equipmentId: { characterId, equipmentId } },
+          data: { usesRemaining: { decrement: 1 } },
+        });
+      } else if (row.quantity > 1) {
+        await tx.characterEquipment.update({
+          where: { characterId_equipmentId: { characterId, equipmentId } },
+          data: { quantity: { decrement: 1 }, usesRemaining: usesPerUnit },
+        });
+      } else {
+        await tx.characterEquipment.delete({
+          where: { characterId_equipmentId: { characterId, equipmentId } },
+        });
+      }
     });
 
-    return this.findOne(characterId);
+    return this.getCharacterEquipment(characterId);
   }
 
   async getCharacterMove(characterId: number, moveId: number) {
@@ -356,7 +493,9 @@ export class CharacterService {
     });
 
     if (move.classId !== character.classId) {
-      throw new BadRequestException('El movimiento no pertenece a la clase del personaje');
+      throw new BadRequestException(
+        'El movimiento no pertenece a la clase del personaje',
+      );
     }
 
     return MoveMapper.toSummary(move);
@@ -394,7 +533,7 @@ export class CharacterService {
         {
           sortOrder: 'asc',
         },
-      ]
+      ],
     });
 
     const movesResponse = moves.map((move) => MoveMapper.toResponse(move));
@@ -420,12 +559,16 @@ export class CharacterService {
     });
 
     if (move.classId !== character.classId) {
-      throw new BadRequestException('El movimiento no pertenece a la clase del personaje');
+      throw new BadRequestException(
+        'El movimiento no pertenece a la clase del personaje',
+      );
     }
 
     if (move.moveType === classContentMoveType.ADVANCED) {
       if (move.levelRequired! > character.level!) {
-        throw new BadRequestException('El movimiento requiere niveles más altos');
+        throw new BadRequestException(
+          'El movimiento requiere niveles más altos',
+        );
       }
     }
 
@@ -439,7 +582,11 @@ export class CharacterService {
     return this.findOne(characterId);
   }
 
-  async updateMove(characterId: number, contentId: number, updateMoveDto: UpdateMoveDto) {
+  async updateMove(
+    characterId: number,
+    contentId: number,
+    updateMoveDto: UpdateMoveDto,
+  ) {
     const result = await this.prisma.$transaction(async (tx) => {
       const character = await tx.characters.findUniqueOrThrow({
         where: {
@@ -467,16 +614,14 @@ export class CharacterService {
         include: {
           contentElements: {
             include: {
-              contentElementOptions: true
+              contentElementOptions: true,
             },
           },
         },
       });
 
       const validElementIds = new Set(
-        content.contentElements.map(
-          (element) => element.id,
-        ),
+        content.contentElements.map((element) => element.id),
       );
 
       for (const element of updateMoveDto.elements) {
@@ -503,9 +648,7 @@ export class CharacterService {
         }
 
         const validOptionIds = new Set(
-          contentElement.contentElementOptions.map(
-            (option) => option.id,
-          ),
+          contentElement.contentElementOptions.map((option) => option.id),
         );
 
         for (const optionId of element.optionIds) {
@@ -517,13 +660,18 @@ export class CharacterService {
         }
 
         if (
-        contentElement.min_select !== null && element.optionIds.length < contentElement.min_select) {
+          contentElement.min_select !== null &&
+          element.optionIds.length < contentElement.min_select
+        ) {
           throw new BadRequestException(
             `El elemento ${element.elementId} requiere al menos ${contentElement.min_select} opciones`,
           );
         }
 
-        if (contentElement.max_select !== null && element.optionIds.length > contentElement.max_select) {
+        if (
+          contentElement.max_select !== null &&
+          element.optionIds.length > contentElement.max_select
+        ) {
           throw new BadRequestException(
             `El elemento ${element.elementId} permite como máximo ${contentElement.max_select} opciones`,
           );
@@ -534,9 +682,7 @@ export class CharacterService {
         where: {
           characterId: characterId,
           elementId: {
-            in: content.contentElements.map(
-              (element) => element.id,
-            ),
+            in: content.contentElements.map((element) => element.id),
           },
         },
       });
@@ -545,9 +691,7 @@ export class CharacterService {
         where: {
           characterId: characterId,
           elementId: {
-            in: content.contentElements.map(
-              (element) => element.id,
-            ),
+            in: content.contentElements.map((element) => element.id),
           },
         },
       });
@@ -658,7 +802,7 @@ export class CharacterService {
         },
         {
           sortOrder: 'asc',
-        }
+        },
       ],
       include: {
         spellLists: {
@@ -689,7 +833,7 @@ export class CharacterService {
         classId: character.classId,
       },
       select: {
-        id: true
+        id: true,
       },
     });
 
@@ -699,22 +843,21 @@ export class CharacterService {
       },
       select: {
         spellId: true,
-      }
+      },
     });
-    
 
     const spells = await this.prisma.spells.findMany({
       where: {
         OR: [
           {
             id: {
-              in: selectedSpells.map((spell) => spell.spellId)
-            }
+              in: selectedSpells.map((spell) => spell.spellId),
+            },
           },
           {
             spellListId: spellList.id,
-            spellLevel: 0 
-          }
+            spellLevel: 0,
+          },
         ],
       },
       orderBy: [
@@ -743,8 +886,8 @@ export class CharacterService {
     const spells = await this.prisma.spells.findMany({
       where: {
         id: {
-          in: spellIds
-        }
+          in: spellIds,
+        },
       },
       include: {
         spellLists: true,
@@ -757,11 +900,15 @@ export class CharacterService {
       }
 
       if (spell.spellLists.classId !== character.classId) {
-        throw new BadRequestException('El hechizo no pertenece a la clase del personaje');
+        throw new BadRequestException(
+          'El hechizo no pertenece a la clase del personaje',
+        );
       }
 
       if (spell.spellLevel > character.level!) {
-        throw new BadRequestException('El nivel del personaje no es suficiente para usar el hechizo');
+        throw new BadRequestException(
+          'El nivel del personaje no es suficiente para usar el hechizo',
+        );
       }
     }
 
@@ -769,7 +916,9 @@ export class CharacterService {
     const spellLevel = spells.reduce((acc, spell) => acc + spell.spellLevel, 0);
 
     if (spellLevel > spellLevelLimit) {
-      throw new BadRequestException('El nivel del personaje no es suficiente para usar todos los hechizos');
+      throw new BadRequestException(
+        'El nivel del personaje no es suficiente para usar todos los hechizos',
+      );
     }
 
     await this.prisma.characterSpells.deleteMany({
@@ -782,9 +931,7 @@ export class CharacterService {
       data: spellIds.map((spellId) => ({
         characterId,
         spellId,
-        known: true,
-        prepared: false,
-      }))
+      })),
     });
 
     return this.getCharacterSpells(characterId);
@@ -823,6 +970,100 @@ export class CharacterService {
     };
   }
 
+  async getCharacterBonds(characterId: number) {
+    await this.prisma.characters.findUniqueOrThrow({
+      where: { id: characterId },
+    });
+
+    const bonds = await this.prisma.characterBonds.findMany({
+      where: { character_id: characterId },
+      orderBy: { created_at: 'asc' },
+    });
+
+    return bonds.map((bond) => CharacterBondMapper.toResponse(bond));
+  }
+
+  async createBond(characterId: number, dto: CreateBondDto) {
+    await this.prisma.characters.findUniqueOrThrow({
+      where: { id: characterId },
+    });
+
+    const bond = await this.prisma.characterBonds.create({
+      data: {
+        character_id: characterId,
+        text: this.normalizeBondText(dto.text),
+      },
+    });
+
+    return CharacterBondMapper.toResponse(bond);
+  }
+
+  async updateBond(characterId: number, bondId: number, dto: UpdateBondDto) {
+    const existingBond = await this.prisma.characterBonds.findFirst({
+      where: {
+        id: bondId,
+        character_id: characterId,
+      },
+    });
+
+    if (!existingBond) {
+      throw new NotFoundException('El bond no existe para este personaje');
+    }
+
+    const result = await this.prisma.characterBonds.updateMany({
+      where: {
+        id: bondId,
+        character_id: characterId,
+      },
+      data: {
+        text: this.normalizeBondText(dto?.text),
+      },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException('El bond no existe para este personaje');
+    }
+
+    const bond = await this.prisma.characterBonds.findFirstOrThrow({
+      where: {
+        id: bondId,
+        character_id: characterId,
+      },
+    });
+
+    return CharacterBondMapper.toResponse(bond);
+  }
+
+  async deleteBond(characterId: number, bondId: number) {
+    const result = await this.prisma.characterBonds.deleteMany({
+      where: {
+        id: bondId,
+        character_id: characterId,
+      },
+    });
+
+    if (result.count === 0) {
+      throw new NotFoundException('El bond no existe para este personaje');
+    }
+
+    return {
+      message: 'El bond ha sido eliminado',
+    };
+  }
+
+  private normalizeBondText(text: unknown): string {
+    if (typeof text !== 'string') {
+      throw new BadRequestException('El texto del bond debe ser un string');
+    }
+
+    const normalizedText = text.trim();
+    if (!normalizedText) {
+      throw new BadRequestException('El texto del bond no puede estar vacío');
+    }
+
+    return normalizedText;
+  }
+
   async levelUp(characterId: number, levelUpDto: LevelUpDto) {
     const character = await this.prisma.characters.findUniqueOrThrow({
       where: {
@@ -836,8 +1077,11 @@ export class CharacterService {
     const oldCharacter = character;
 
     // Recalcular el hp actual. Si está al 100%, aumenta en 1 para seguir al 100%.
-    const hpCurrent = levelUpDto.stat === 'constitution' ? character.hpCurrent! + 1 : character.hpCurrent!;
-    
+    const hpCurrent =
+      levelUpDto.stat === 'constitution'
+        ? character.hpCurrent! + 1
+        : character.hpCurrent!;
+
     try {
       await this.prisma.characters.update({
         where: {
@@ -882,12 +1126,11 @@ export class CharacterService {
 
     let hpCurrent = character.hpCurrent! - hpChange;
 
-
     if (hpCurrent < 0) {
       hpCurrent = 0;
     }
 
-    if((character.constitution! + character.class.hitPoints) < hpCurrent) {
+    if (character.constitution! + character.class.hitPoints < hpCurrent) {
       hpCurrent = character.constitution! + character.class.hitPoints;
     }
 

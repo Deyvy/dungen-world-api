@@ -1,10 +1,32 @@
-### Select a class equipment
+### Select initial class equipment (replacement)
 POST http://localhost:3000/api/characters/5/equipment
 Content-Type: application/json
 
 {
-  "contentIds": [
-    7,
-    10
+  "equipmentIds": [
+    1
   ]
 }
+
+### Read canonical equipment catalog
+GET http://localhost:3000/api/equipment
+
+### Read class-linked equipment options
+GET http://localhost:3000/api/characters/5/equipment/available
+
+### Read character inventory
+GET http://localhost:3000/api/characters/5/equipment
+
+### Add equipment units
+POST http://localhost:3000/api/characters/5/equipment/1
+Content-Type: application/json
+
+{
+  "quantity": 2
+}
+
+### Consume one use
+POST http://localhost:3000/api/characters/5/equipment/2/use
+
+### Remove an inventory row
+DELETE http://localhost:3000/api/characters/5/equipment/1
