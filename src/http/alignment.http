@@ -5,3 +5,9 @@ Content-Type: application/json
 {
   "contentId": 3
 }
+
+### Get available class alignments
+GET http://localhost:3000/api/characters/5/alignments/available
+
+### Get the character's selected alignment
+GET http://localhost:3000/api/characters/5/alignment

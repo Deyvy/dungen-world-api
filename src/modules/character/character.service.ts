@@ -24,6 +24,7 @@ import { CharacterEquipmentMapper } from './mappers/character-equipment.mapper';
 import { CreateBondDto } from './dto/create-bond.dto';
 import { UpdateBondDto } from './dto/update-bond.dto';
 import { CharacterBondMapper } from './mappers/character-bond.mapper';
+import { CharacterContentMapper } from './mappers/character-content.mapper';
 
 @Injectable()
 export class CharacterService {
@@ -237,6 +238,14 @@ export class CharacterService {
     return this.findOne(characterId);
   }
 
+  async getAvailableRaces(characterId: number) {
+    return this.getAvailableClassContent(characterId, classContentType.RACE);
+  }
+
+  async getCharacterRace(characterId: number) {
+    return this.getSelectedClassContent(characterId, classContentType.RACE);
+  }
+
   async selectAlignment(
     characterId: number,
     selectAlignmentDto: SelectRaceDto,
@@ -286,6 +295,78 @@ export class CharacterService {
     });
 
     return this.findOne(characterId);
+  }
+
+  async getAvailableAlignments(characterId: number) {
+    return this.getAvailableClassContent(
+      characterId,
+      classContentType.ALIGNMENT,
+    );
+  }
+
+  async getCharacterAlignment(characterId: number) {
+    return this.getSelectedClassContent(
+      characterId,
+      classContentType.ALIGNMENT,
+    );
+  }
+
+  private async getAvailableClassContent(
+    characterId: number,
+    type: classContentType,
+  ) {
+    const character = await this.prisma.characters.findUniqueOrThrow({
+      where: { id: characterId },
+      select: { classId: true },
+    });
+
+    const content = await this.prisma.classContent.findMany({
+      where: {
+        classId: character.classId,
+        type,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        sortOrder: true,
+      },
+      orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
+    });
+
+    return content.map((item) => CharacterContentMapper.toResponse(item));
+  }
+
+  private async getSelectedClassContent(
+    characterId: number,
+    type: classContentType,
+  ) {
+    await this.prisma.characters.findUniqueOrThrow({
+      where: { id: characterId },
+      select: { id: true },
+    });
+
+    const selected = await this.prisma.characterContent.findFirst({
+      where: {
+        characterId,
+        classContent: { type },
+      },
+      select: {
+        classContent: {
+          select: {
+            id: true,
+            title: true,
+            content: true,
+            sortOrder: true,
+          },
+        },
+      },
+    });
+
+    return selected
+      ? CharacterContentMapper.toResponse(selected.classContent)
+      : null;
   }
 
   async selectEquipment(

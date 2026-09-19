@@ -6,6 +6,12 @@ Content-Type: application/json
   "contentId": 6
 }
 
+### Get available class races
+GET http://localhost:3000/api/characters/1/races/available
+
+### Get the character's selected race
+GET http://localhost:3000/api/characters/1/race
+
 ### Create a class race
 POST http://localhost:3000/api/class/1/races
 Content-Type: application/json

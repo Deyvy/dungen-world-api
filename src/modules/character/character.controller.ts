@@ -61,12 +61,32 @@ export class CharacterController {
     return this.characterService.selectRace(id, selectRaceDto);
   }
 
+  @Get(':id/races/available')
+  getAvailableRaces(@Param('id', ParseIntPipe) id: number) {
+    return this.characterService.getAvailableRaces(id);
+  }
+
+  @Get(':id/race')
+  getCharacterRace(@Param('id', ParseIntPipe) id: number) {
+    return this.characterService.getCharacterRace(id);
+  }
+
   @Post(':id/alignments')
   selectAlignment(
     @Param('id', ParseIntPipe) id: number,
     @Body() selectAlignmentDto: SelectAlignmentDto,
   ) {
     return this.characterService.selectAlignment(id, selectAlignmentDto);
+  }
+
+  @Get(':id/alignments/available')
+  getAvailableAlignments(@Param('id', ParseIntPipe) id: number) {
+    return this.characterService.getAvailableAlignments(id);
+  }
+
+  @Get(':id/alignment')
+  getCharacterAlignment(@Param('id', ParseIntPipe) id: number) {
+    return this.characterService.getCharacterAlignment(id);
   }
 
   @Post(':id/equipment')
