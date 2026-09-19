@@ -46,9 +46,7 @@ CREATE TABLE `character_element_values` (
 -- CreateTable
 CREATE TABLE `character_spells` (
     `character_id` INTEGER NOT NULL,
-    `spell_id` INTEGER NOT NULL,
-    `known` BOOLEAN NULL DEFAULT true,
-    `prepared` BOOLEAN NULL DEFAULT false,
+    `spell_id` INTEGER NOT NULL
 
     INDEX `fk_character_spell_spell`(`spell_id`),
     PRIMARY KEY (`character_id`, `spell_id`)

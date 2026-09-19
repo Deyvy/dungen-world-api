@@ -1,0 +1,68 @@
+schema: spec-driven
+
+context: |
+  Project: dungen-world-api
+  Stack: NestJS 11, TypeScript, Prisma 8 RC, MySQL through @prisma/adapter-mariadb.
+  Architecture: Custom NestJS modules with DTOs, mappers, services, controllers, and a shared Prisma service.
+  Domain: REST API for tabletop role-playing game character sheets; game content is separated from character state.
+  Persistence: Repository-local OpenSpec artifacts under openspec/.
+  Style: Reuse existing business logic, do not invent Prisma relationships, and use Prisma transactions for atomic multi-table work.
+
+strict_tdd: false
+
+projects:
+  - path: .
+    stack: NestJS 11 / TypeScript / Prisma 8 RC / MySQL via MariaDB adapter
+    test_command: npm test
+    test_framework: Jest 30 with ts-jest
+    test_layers:
+      unit: "npm test"
+      integration: "—"
+      e2e: "npm run test:e2e"
+    coverage_command: npm run test:cov
+    quality:
+      linter: npm run lint
+      type_checker: npm run build
+      formatter: npm run format
+
+testing:
+  strict_tdd: false
+  workspace_test_command: ""
+  fallback_reason: No explicit workspace-level command covers every in-scope project; only project-local commands were detected.
+  projects:
+    - path: .
+      framework: Jest 30 with ts-jest
+      unit: true
+      integration: false
+      e2e: true
+      coverage: true
+      test_command: npm test
+      e2e_command: npm run test:e2e
+      coverage_command: npm run test:cov
+      lint_command: npm run lint
+      type_check_command: npm run build
+      format_command: npm run format
+
+rules:
+  proposal:
+    - Keep the scope limited to the selected change and include a rollback plan for risky changes.
+  specs:
+    - Use Given/When/Then scenarios and RFC 2119 requirement keywords.
+    - Preserve the separation between shared game content and character state.
+  design:
+    - Document architecture decisions and their rationale.
+    - Do not invent Prisma models, relations, or field names; verify schema.prisma first.
+  tasks:
+    - Group tasks by phase and keep each task completable in one session.
+  apply:
+    tdd: false
+    test_command: npm test
+    guidelines:
+      - Follow existing custom module, DTO, mapper, and service patterns.
+      - Reuse existing operations instead of duplicating business logic.
+  verify:
+    test_command: npm test
+    build_command: npm run build
+    coverage_threshold: 0
+  archive:
+    - Preserve the OpenSpec change directory as an audit trail.

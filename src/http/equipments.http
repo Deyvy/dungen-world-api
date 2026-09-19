@@ -18,7 +18,7 @@ GET http://localhost:3000/api/characters/5/equipment/available
 GET http://localhost:3000/api/characters/5/equipment
 
 ### Add equipment units
-POST http://localhost:3000/api/characters/5/equipment/1
+POST http://localhost:3000/api/characters/5/equipment/2
 Content-Type: application/json
 
 {
