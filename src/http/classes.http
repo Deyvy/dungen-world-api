@@ -1,0 +1,5 @@
+### Get all classes
+GET http://localhost:3000/api/classes
+
+### Get a class
+GET http://localhost:3000/api/classes/1

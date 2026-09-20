@@ -11,8 +11,9 @@ export class ClassMapper {
     dto.description = model.description ?? '';
     dto.appearance = model.appearance ?? '';
     dto.hitPoints = model.hitPoints;
-    if (model.class_content.length > 0) {
-        for (const content of model.class_content) {
+    dto.baseLoad = model.baseLoad;
+    if (model.contents.length > 0) {
+        for (const content of model.contents) {
             switch (content.type) {
                 case 'ALIGNMENT':
                     dto.alignments = content;
@@ -37,5 +38,5 @@ export class ClassMapper {
     }
 
     return dto;
-  } 
+  }
 }

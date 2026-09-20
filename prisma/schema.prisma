@@ -153,6 +153,7 @@ model classes {
   description String?        @db.Text
   appearance  String?        @db.Text
   hitPoints   Int            @map("hit_points") @db.TinyInt
+  baseLoad    Int            @map("base_load") @db.TinyInt
   createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamp(0)
   characters  characters[]
   contents    classContent[]

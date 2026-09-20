@@ -4,6 +4,7 @@ export class ClassDetailDto {
   description?: string;
   appearance?: string;
   hitPoints!: number;
+  baseLoad!: number;
 
   alignments?: any[];
   races?: any[];

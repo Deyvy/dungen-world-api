@@ -23,15 +23,18 @@ export class ClassSummaryDto {
     hit_points!: number;
 
     @Expose()
+    baseLoad!: number;
+
+    @Expose()
     created_at!: Date;
 
     alignments?: any[];
 
     races?: any[];
-    
+
     equipment?: any[];
-    
+
     initialMoves?: any[];
-    
+
     advancedMoves?: any[];
 }

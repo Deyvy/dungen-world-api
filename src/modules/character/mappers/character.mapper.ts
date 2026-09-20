@@ -7,10 +7,11 @@ export class CharacterMapper {
       name: character.name,
       level: character.level,
       hpCurrent: character.hpCurrent,
-      
+
       class: {
         id: character.class.id,
         name: character.class.name,
+        baseLoad: character.class.baseLoad,
       },
 
       appearance: character.appearance
