@@ -1,0 +1,21 @@
+### Get character bonds
+GET http://localhost:3000/api/characters/4/bonds
+
+### Create a bond
+POST http://localhost:3000/api/characters/4/bonds
+Content-Type: application/json
+
+{
+  "text": "Tamagotchi es un personaje bien personaje"
+}
+
+### Update a bond
+PATCH http://localhost:3000/api/characters/4/bonds/1
+Content-Type: application/json
+
+{
+  "text": "Tamagotchi es un personaje bien personaje, pero no tiene cuello"
+}
+
+### Delete a bond
+DELETE http://localhost:3000/api/characters/4/bonds/1

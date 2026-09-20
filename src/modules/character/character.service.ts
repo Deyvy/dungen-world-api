@@ -25,6 +25,7 @@ import { CreateBondDto } from './dto/create-bond.dto';
 import { UpdateBondDto } from './dto/update-bond.dto';
 import { CharacterBondMapper } from './mappers/character-bond.mapper';
 import { CharacterContentMapper } from './mappers/character-content.mapper';
+import { Prisma } from '../../generated/prisma/client';
 
 @Injectable()
 export class CharacterService {
@@ -85,6 +86,7 @@ export class CharacterService {
           classId: createCharacterDto.classId,
           type: classContentType.MOVE,
           moveType: classContentMoveType.INITIAL,
+          isActive: true,
         },
         orderBy: {
           sortOrder: 'asc',
@@ -623,21 +625,45 @@ export class CharacterService {
   }
 
   async selectMove(characterId: number, selectMoveDto: SelectMoveDto) {
-    const character = await this.prisma.characters.findUniqueOrThrow({
+    await this.prisma.$transaction(async (tx) => {
+      await this.acquireMove(tx, characterId, selectMoveDto.contentId);
+    });
+
+    return this.findOne(characterId);
+  }
+
+  private async acquireMove(
+    tx: Prisma.TransactionClient,
+    characterId: number,
+    contentId: number,
+  ) {
+    const character = await tx.characters.findUniqueOrThrow({
       where: {
         id: characterId,
       },
-      include: {
-        class: true,
+    });
+
+    const move = await tx.classContent.findUniqueOrThrow({
+      where: {
+        id: contentId,
       },
     });
 
-    const move = await this.prisma.classContent.findUniqueOrThrow({
-      where: {
-        id: selectMoveDto.contentId,
-        type: classContentType.MOVE,
-      },
-    });
+    if (move.type !== classContentType.MOVE) {
+      throw new BadRequestException(
+        'El contenido seleccionado no es un movimiento',
+      );
+    }
+
+    if (move.moveType !== classContentMoveType.ADVANCED) {
+      throw new BadRequestException(
+        'Solo se pueden adquirir movimientos avanzados',
+      );
+    }
+
+    if (!move.isActive) {
+      throw new BadRequestException('El movimiento no está activo');
+    }
 
     if (move.classId !== character.classId) {
       throw new BadRequestException(
@@ -645,22 +671,29 @@ export class CharacterService {
       );
     }
 
-    if (move.moveType === classContentMoveType.ADVANCED) {
-      if (move.levelRequired! > character.level!) {
-        throw new BadRequestException(
-          'El movimiento requiere niveles más altos',
-        );
-      }
+    if (move.levelRequired === null || move.levelRequired > character.level!) {
+      throw new BadRequestException('El movimiento requiere niveles más altos');
     }
 
-    await this.prisma.characterContent.create({
-      data: {
-        characterId: characterId,
-        contentId: selectMoveDto.contentId,
+    const existingMove = await tx.characterContent.findUnique({
+      where: {
+        characterId_contentId: {
+          characterId,
+          contentId,
+        },
       },
     });
 
-    return this.findOne(characterId);
+    if (existingMove) {
+      throw new BadRequestException('El personaje ya posee este movimiento');
+    }
+
+    return tx.characterContent.create({
+      data: {
+        characterId,
+        contentId,
+      },
+    });
   }
 
   async updateMove(
@@ -668,6 +701,25 @@ export class CharacterService {
     contentId: number,
     updateMoveDto: UpdateMoveDto,
   ) {
+    const elementIds = updateMoveDto.elements.map(
+      (element) => element.elementId,
+    );
+    if (new Set(elementIds).size !== elementIds.length) {
+      throw new BadRequestException('No se pueden repetir elementos');
+    }
+
+    for (const element of updateMoveDto.elements) {
+      if (element.optionIds === undefined) {
+        continue;
+      }
+
+      if (new Set(element.optionIds).size !== element.optionIds.length) {
+        throw new BadRequestException(
+          `No se pueden repetir opciones en el elemento ${element.elementId}`,
+        );
+      }
+    }
+
     const result = await this.prisma.$transaction(async (tx) => {
       const character = await tx.characters.findUniqueOrThrow({
         where: {
@@ -714,7 +766,7 @@ export class CharacterService {
       }
 
       for (const element of updateMoveDto.elements) {
-        if (!element.optionIds?.length) {
+        if (element.optionIds === undefined) {
           continue;
         }
 
@@ -759,43 +811,41 @@ export class CharacterService {
         }
       }
 
-      await tx.characterElementValues.deleteMany({
-        where: {
-          characterId: characterId,
-          elementId: {
-            in: content.contentElements.map((element) => element.id),
-          },
-        },
-      });
-
-      await tx.characterElementOptions.deleteMany({
-        where: {
-          characterId: characterId,
-          elementId: {
-            in: content.contentElements.map((element) => element.id),
-          },
-        },
-      });
-
       for (const element of updateMoveDto.elements) {
+        if (element.value !== undefined) {
+          await tx.characterElementValues.deleteMany({
+            where: {
+              characterId,
+              elementId: element.elementId,
+            },
+          });
+        }
+
+        if (element.optionIds !== undefined) {
+          await tx.characterElementOptions.deleteMany({
+            where: {
+              characterId,
+              elementId: element.elementId,
+            },
+          });
+        }
+
         if (element.value !== undefined) {
           await tx.characterElementValues.create({
             data: {
-              characterId: characterId,
+              characterId,
               elementId: element.elementId,
               value: element.value,
             },
           });
         }
-      }
 
-      for (const element of updateMoveDto.elements) {
         if (element.optionIds?.length) {
           await tx.characterElementOptions.createMany({
             data: element.optionIds.map((optionId) => ({
-              characterId: characterId,
+              characterId,
               elementId: element.elementId,
-              optionId: optionId,
+              optionId,
             })),
           });
         }
@@ -1146,25 +1196,26 @@ export class CharacterService {
   }
 
   async levelUp(characterId: number, levelUpDto: LevelUpDto) {
-    const character = await this.prisma.characters.findUniqueOrThrow({
-      where: {
-        id: characterId,
-      },
-      include: {
-        class: true,
-      },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      const character = await tx.characters.findUniqueOrThrow({
+        where: {
+          id: characterId,
+        },
+        include: {
+          class: true,
+        },
+      });
 
-    const oldCharacter = character;
+      const wasAtMaxHp =
+        character.constitution !== null &&
+        character.hpCurrent ===
+          character.class.hitPoints + character.constitution;
+      const hpCurrent =
+        levelUpDto.stat === 'constitution' && wasAtMaxHp
+          ? character.hpCurrent! + 1
+          : character.hpCurrent!;
 
-    // Recalcular el hp actual. Si está al 100%, aumenta en 1 para seguir al 100%.
-    const hpCurrent =
-      levelUpDto.stat === 'constitution'
-        ? character.hpCurrent! + 1
-        : character.hpCurrent!;
-
-    try {
-      await this.prisma.characters.update({
+      await tx.characters.update({
         where: {
           id: characterId,
         },
@@ -1175,22 +1226,8 @@ export class CharacterService {
         },
       });
 
-      await this.selectMove(characterId, { contentId: levelUpDto.moveId });
-    } catch (error) {
-      // Rollback manual, ya que al llamar a selectMove no tiene sentido hacer una transacción.
-      await this.prisma.characters.update({
-        where: {
-          id: characterId,
-        },
-        data: {
-          level: oldCharacter.level,
-          [levelUpDto.stat]: oldCharacter[levelUpDto.stat],
-          hpCurrent: oldCharacter.hpCurrent,
-        },
-      });
-
-      throw new NotFoundException(error);
-    }
+      await this.acquireMove(tx, characterId, levelUpDto.moveId);
+    });
 
     return this.findOne(characterId);
   }
