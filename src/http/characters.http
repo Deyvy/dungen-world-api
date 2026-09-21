@@ -42,6 +42,9 @@ Content-Type: application/json
   ]
 }
 
+### Delete a character
+DELETE http://localhost:3000/api/characters/4
+
 ### Level up
 POST http://localhost:3000/api/characters/1/level-up
 Content-Type: application/json

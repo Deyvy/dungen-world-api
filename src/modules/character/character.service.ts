@@ -195,8 +195,14 @@ export class CharacterService {
     return CharacterMapper.toResponse(updatedCharacter);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} character`;
+  async remove(id: number) {
+    await this.prisma.characters.delete({
+      where: { id },
+    });
+
+    return {
+      message: 'El personaje ha sido eliminado',
+    };
   }
 
   async selectRace(characterId: number, selectRaceDto: SelectRaceDto) {

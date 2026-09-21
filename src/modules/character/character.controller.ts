@@ -54,8 +54,8 @@ export class CharacterController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.characterService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.characterService.remove(id);
   }
 
   @Post(':id/races')
