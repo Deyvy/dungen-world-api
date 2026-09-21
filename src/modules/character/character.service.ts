@@ -72,15 +72,6 @@ export class CharacterService {
         },
       });
 
-      await tx.characterAppearance.createMany({
-        data:
-          createCharacterDto.appearance?.map((content, index) => ({
-            character_id: character.id,
-            content,
-            sortOrder: index,
-          })) ?? [],
-      });
-
       const initialMoves = await tx.classContent.findMany({
         where: {
           classId: createCharacterDto.classId,
@@ -209,46 +200,48 @@ export class CharacterService {
   }
 
   async selectRace(characterId: number, selectRaceDto: SelectRaceDto) {
-    const character = await this.prisma.characters.findUniqueOrThrow({
-      where: {
-        id: characterId,
-      },
-      include: {
-        class: true,
-      },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      const character = await tx.characters.findUniqueOrThrow({
+        where: {
+          id: characterId,
+        },
+        include: {
+          class: true,
+        },
+      });
 
-    const existingRace = await this.prisma.characterContent.findMany({
-      where: {
-        characterId,
-        classContent: {
+      const existingRace = await tx.characterContent.findMany({
+        where: {
+          characterId,
+          classContent: {
+            type: classContentType.RACE,
+          },
+        },
+      });
+
+      if (existingRace.length > 0) {
+        throw new BadRequestException('Ya existe una raza para este personaje');
+      }
+
+      const classContent = await tx.classContent.findUniqueOrThrow({
+        where: {
+          id: selectRaceDto.contentId,
           type: classContentType.RACE,
         },
-      },
-    });
+      });
 
-    if (existingRace.length > 0) {
-      throw new BadRequestException('Ya existe una raza para este personaje');
-    }
+      if (classContent.classId !== character.classId) {
+        throw new BadRequestException(
+          'La raza no pertenece a la clase del personaje',
+        );
+      }
 
-    const classContent = await this.prisma.classContent.findUniqueOrThrow({
-      where: {
-        id: selectRaceDto.contentId,
-        type: classContentType.RACE,
-      },
-    });
-
-    if (classContent.classId !== character.classId) {
-      throw new BadRequestException(
-        'La raza no pertenece a la clase del personaje',
-      );
-    }
-
-    await this.prisma.characterContent.create({
-      data: {
-        characterId: characterId,
-        contentId: selectRaceDto.contentId,
-      },
+      await tx.characterContent.create({
+        data: {
+          characterId: characterId,
+          contentId: selectRaceDto.contentId,
+        },
+      });
     });
 
     return this.findOne(characterId);
@@ -266,48 +259,50 @@ export class CharacterService {
     characterId: number,
     selectAlignmentDto: SelectRaceDto,
   ) {
-    const character = await this.prisma.characters.findUniqueOrThrow({
-      where: {
-        id: characterId,
-      },
-      include: {
-        class: true,
-      },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      const character = await tx.characters.findUniqueOrThrow({
+        where: {
+          id: characterId,
+        },
+        include: {
+          class: true,
+        },
+      });
 
-    const existingAlignment = await this.prisma.characterContent.findMany({
-      where: {
-        characterId,
-        classContent: {
+      const existingAlignment = await tx.characterContent.findMany({
+        where: {
+          characterId,
+          classContent: {
+            type: classContentType.ALIGNMENT,
+          },
+        },
+      });
+
+      if (existingAlignment.length > 0) {
+        throw new BadRequestException(
+          'Ya existe un alineamiento para este personaje',
+        );
+      }
+
+      const classContent = await tx.classContent.findUniqueOrThrow({
+        where: {
+          id: selectAlignmentDto.contentId,
           type: classContentType.ALIGNMENT,
         },
-      },
-    });
+      });
 
-    if (existingAlignment.length > 0) {
-      throw new BadRequestException(
-        'Ya existe un alineamiento para este personaje',
-      );
-    }
+      if (classContent.classId !== character.classId) {
+        throw new BadRequestException(
+          'El alineamiento no pertenece a la clase del personaje',
+        );
+      }
 
-    const classContent = await this.prisma.classContent.findUniqueOrThrow({
-      where: {
-        id: selectAlignmentDto.contentId,
-        type: classContentType.ALIGNMENT,
-      },
-    });
-
-    if (classContent.classId !== character.classId) {
-      throw new BadRequestException(
-        'El alineamiento no pertenece a la clase del personaje',
-      );
-    }
-
-    await this.prisma.characterContent.create({
-      data: {
-        characterId: characterId,
-        contentId: selectAlignmentDto.contentId,
-      },
+      await tx.characterContent.create({
+        data: {
+          characterId: characterId,
+          contentId: selectAlignmentDto.contentId,
+        },
+      });
     });
 
     return this.findOne(characterId);
@@ -1019,6 +1014,10 @@ export class CharacterService {
   }
 
   async addSpells(characterId: number, spellIds: number[]) {
+    if (new Set(spellIds).size !== spellIds.length) {
+      throw new BadRequestException('Los hechizos no pueden estar duplicados');
+    }
+
     const character = await this.prisma.characters.findUniqueOrThrow({
       where: {
         id: characterId,
@@ -1066,17 +1065,19 @@ export class CharacterService {
       );
     }
 
-    await this.prisma.characterSpells.deleteMany({
-      where: {
-        characterId,
-      },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.characterSpells.deleteMany({
+        where: {
+          characterId,
+        },
+      });
 
-    await this.prisma.characterSpells.createMany({
-      data: spellIds.map((spellId) => ({
-        characterId,
-        spellId,
-      })),
+      await tx.characterSpells.createMany({
+        data: spellIds.map((spellId) => ({
+          characterId,
+          spellId,
+        })),
+      });
     });
 
     return this.getCharacterSpells(characterId);

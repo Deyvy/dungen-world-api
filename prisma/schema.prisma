@@ -50,11 +50,11 @@ model characterElementOptions {
   optionId              Int                   @map("option_id")
   characters            characters            @relation(fields: [characterId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_option_character")
   contentElements       contentElements       @relation(fields: [elementId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_option_element")
-  contentElementOptions contentElementOptions @relation(fields: [optionId], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_option_option")
+  contentElementOptions contentElementOptions @relation(fields: [optionId, elementId], references: [id, element_id], onDelete: Cascade, onUpdate: Restrict, map: "fk_character_option_option_element")
 
   @@id([characterId, elementId, optionId])
   @@index([elementId], map: "fk_character_option_element")
-  @@index([optionId], map: "fk_character_option_option")
+  @@index([optionId, elementId], map: "fk_character_option_option_element")
   @@map("character_element_options")
 }
 
@@ -169,6 +169,7 @@ model contentElementOptions {
   characterElementOptions characterElementOptions[]
   contentElements         contentElements           @relation(fields: [element_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "fk_option_element")
 
+  @@unique([id, element_id], map: "content_element_options_id_element_id_key")
   @@index([element_id], map: "fk_option_element")
   @@map("content_element_options")
 }
