@@ -1,17 +1,27 @@
-import { IsArray, IsInt, IsOptional, IsString } from 'class-validator';
-import { contentElements } from '../../../generated/prisma/browser';
-
 export class MoveDetailsDto {
-  @IsInt()
   id!: number;
 
-  @IsString()
   title!: string;
 
-  @IsString()
   type!: string;
 
-  @IsOptional()
-  @IsArray()
-  elements?: any[];
+  elements?: MoveElementDto[];
+}
+
+export class MoveElementDto {
+  id!: number;
+  type!: string;
+  label!: string;
+  code!: string | null;
+  minSelect!: number | null;
+  maxSelect!: number | null;
+  sortOrder!: number | null;
+  options!: MoveElementOptionDto[];
+}
+
+export class MoveElementOptionDto {
+  id!: number;
+  label!: string;
+  value!: string | null;
+  sortOrder!: number | null;
 }

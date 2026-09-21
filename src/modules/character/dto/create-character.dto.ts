@@ -13,15 +13,13 @@ export class CreateCharacterDto {
   name!: string;
 
   @IsInt()
+  @Min(1)
   classId!: number;
 
   @IsArray()
   @IsString({ each: true })
   appearance?: string[];
 
-  @IsInt()
-  hpCurrent!: number;
-  
   @IsInt()
   @Min(1)
   @Max(18)

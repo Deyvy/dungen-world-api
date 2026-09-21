@@ -209,7 +209,6 @@ model spells {
   id              Int               @id @default(autoincrement())
   spellListId     Int               @map("spell_list_id")
   name            String            @db.VarChar(150)
-  slug            String?           @unique(map: "slug") @db.VarChar(150)
   spellLevel      Int               @map("spell_level") @db.TinyInt
   description     String?           @db.MediumText
   metadata        String?           @db.LongText

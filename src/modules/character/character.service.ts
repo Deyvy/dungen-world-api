@@ -26,6 +26,7 @@ import { UpdateBondDto } from './dto/update-bond.dto';
 import { CharacterBondMapper } from './mappers/character-bond.mapper';
 import { CharacterContentMapper } from './mappers/character-content.mapper';
 import { Prisma } from '../../generated/prisma/client';
+import { SpellMapper } from '../spells/mappers/spell.mapper';
 
 @Injectable()
 export class CharacterService {
@@ -950,17 +951,18 @@ export class CharacterService {
           sortOrder: 'asc',
         },
       ],
-      include: {
-        spellLists: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+      select: {
+        id: true,
+        name: true,
+        spellLevel: true,
+        description: true,
+        metadata: true,
+        isActive: true,
+        sortOrder: true,
       },
     });
 
-    return spells;
+    return spells.map(SpellMapper.toResponse);
   }
 
   async getCharacterSpells(characterId: number) {
@@ -987,9 +989,7 @@ export class CharacterService {
       where: {
         characterId,
       },
-      select: {
-        spellId: true,
-      },
+      select: { spellId: true },
     });
 
     const spells = await this.prisma.spells.findMany({
@@ -1014,9 +1014,18 @@ export class CharacterService {
           sortOrder: 'asc',
         },
       ],
+      select: {
+        id: true,
+        name: true,
+        spellLevel: true,
+        description: true,
+        metadata: true,
+        isActive: true,
+        sortOrder: true,
+      },
     });
 
-    return spells;
+    return spells.map(SpellMapper.toResponse);
   }
 
   async addSpells(characterId: number, spellIds: number[]) {

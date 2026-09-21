@@ -20,6 +20,8 @@ import { LevelUpDto } from './dto/level-up.dto';
 import { AddEquipmentDto } from './dto/add-equipment.dto';
 import { CreateBondDto } from './dto/create-bond.dto';
 import { UpdateBondDto } from './dto/update-bond.dto';
+import { SelectMoveDto } from './dto/select-move.dto';
+import { AddSpellsDto } from './dto/add-spells.dto';
 
 @Controller('characters')
 export class CharacterController {
@@ -155,7 +157,8 @@ export class CharacterController {
     @Param('id', ParseIntPipe) id: number,
     @Param('contentId', ParseIntPipe) contentId: number,
   ) {
-    return this.characterService.selectMove(id, { contentId });
+    const selectMoveDto: SelectMoveDto = { contentId };
+    return this.characterService.selectMove(id, selectMoveDto);
   }
 
   @Put(':id/moves/:contentId')
@@ -182,8 +185,11 @@ export class CharacterController {
   }
 
   @Post(':id/spells')
-  addSpell(@Param('id', ParseIntPipe) id: number, @Body() spellIds: number[]) {
-    return this.characterService.addSpells(id, spellIds);
+  addSpell(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() addSpellsDto: AddSpellsDto,
+  ) {
+    return this.characterService.addSpells(id, addSpellsDto.spellIds);
   }
 
   @Delete(':id/spells/:spellId')
