@@ -143,6 +143,20 @@ export class CharacterService {
     return CharacterMapper.toResponse(character);
   }
 
+  async getAppearance(characterId: number) {
+    const character = await this.prisma.characters.findUniqueOrThrow({
+      where: { id: characterId },
+      select: {
+        appearance: {
+          select: { content: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
+
+    return character.appearance.map((item) => item.content);
+  }
+
   async update(id: number, updateCharacterDto: UpdateCharacterDto) {
     const character = await this.prisma.characters.findUniqueOrThrow({
       where: {

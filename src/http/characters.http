@@ -4,6 +4,9 @@ GET http://localhost:3000/api/characters
 ### Get a character
 GET http://localhost:3000/api/characters/4
 
+### Get character appearance
+GET http://localhost:3000/api/characters/4/appearance
+
 ### Create a character
 POST http://localhost:3000/api/characters
 Content-Type: application/json

@@ -40,6 +40,11 @@ export class CharacterController {
     return this.characterService.findOne(+id);
   }
 
+  @Get(':id/appearance')
+  getAppearance(@Param('id', ParseIntPipe) id: number) {
+    return this.characterService.getAppearance(id);
+  }
+
   @Patch(':id')
   update(
     @Param('id') id: string,
