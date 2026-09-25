@@ -25,7 +25,7 @@ Allow a character to create a custom alignment that is available only to that ch
 - [x] CA-01 Add DTO, route, service creation, and ownership-aware available-alignment filtering.
 - [x] CA-02 Add HTTP example and verify formatting, build, and tests.
 - [x] CA-04 Reject foreign and malformed custom alignment metadata during selection and availability filtering.
-- [ ] CA-03 Review final diff and create the work-unit commit.
+- [x] CA-03 Review final diff and create the work-unit commit.
 
 ## Authorized scope
 
@@ -59,5 +59,5 @@ Allow a character to create a custom alignment that is available only to that ch
   - `npx prettier --write --parser markdown` on `src/http/alignment.http` and this task file: passed; the `.http` file requires the explicit parser.
   - `npm run build`: passed (`nest build`, exit code 0).
   - `npx tsc -p tsconfig.build.json --noEmit`: passed (exit code 0).
-  - `npx jest --runInBand --passWithNoTests`: passed; no tests found, exit code 0.
-- No commit created, per request.
+- `npx jest --runInBand --passWithNoTests`: passed; no tests found, exit code 0.
+- Work-unit commit: `0af9b12 feat: add custom character alignments`.
