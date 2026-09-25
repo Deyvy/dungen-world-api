@@ -7,6 +7,7 @@ export class CharacterResponseDto {
   class?: {
     id: number;
     name: string;
+    damageDice: number;
     baseLoad: number;
   };
 

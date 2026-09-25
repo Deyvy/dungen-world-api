@@ -11,6 +11,7 @@ type ClassDetailModel = {
   description: string | null;
   appearance: string | null;
   hitPoints: number;
+  damageDice: number;
   baseLoad: number;
   contents: Array<{
     id: number;
@@ -50,6 +51,7 @@ export class ClassMapper {
     dto.description = model.description ?? '';
     dto.appearance = model.appearance ?? '';
     dto.hitPoints = model.hitPoints;
+    dto.damageDice = model.damageDice;
     dto.baseLoad = model.baseLoad;
     dto.alignments = [];
     dto.races = [];

@@ -11,6 +11,7 @@ export class CharacterMapper {
       class: {
         id: character.class.id,
         name: character.class.name,
+        damageDice: character.class.damageDice,
         baseLoad: character.class.baseLoad,
       },
 

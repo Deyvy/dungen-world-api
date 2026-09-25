@@ -21,6 +21,8 @@ export class ClassesService {
         select: {
           id: true,
           name: true,
+          damageDice: true,
+          baseLoad: true,
         },
         orderBy: {
           id: 'asc',
