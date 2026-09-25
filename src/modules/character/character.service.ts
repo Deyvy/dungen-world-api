@@ -27,6 +27,7 @@ import { CharacterBondMapper } from './mappers/character-bond.mapper';
 import { CharacterContentMapper } from './mappers/character-content.mapper';
 import { Prisma } from '../../generated/prisma/client';
 import { SpellMapper } from '../spells/mappers/spell.mapper';
+import { CreateCustomAlignmentDto } from './dto/create-custom-alignment.dto';
 
 @Injectable()
 export class CharacterService {
@@ -304,6 +305,19 @@ export class CharacterService {
         );
       }
 
+      const customAlignmentOwner = this.getCustomAlignmentOwner(
+        classContent.metadata,
+      );
+
+      if (
+        customAlignmentOwner !== null &&
+        customAlignmentOwner !== characterId
+      ) {
+        throw new BadRequestException(
+          'El alineamiento personalizado no pertenece al personaje',
+        );
+      }
+
       await tx.characterContent.create({
         data: {
           characterId: characterId,
@@ -320,6 +334,35 @@ export class CharacterService {
       characterId,
       classContentType.ALIGNMENT,
     );
+  }
+
+  async createCustomAlignment(
+    characterId: number,
+    createCustomAlignmentDto: CreateCustomAlignmentDto,
+  ) {
+    const character = await this.prisma.characters.findUniqueOrThrow({
+      where: { id: characterId },
+      select: { classId: true },
+    });
+
+    const alignment = await this.prisma.classContent.create({
+      data: {
+        classId: character.classId,
+        type: classContentType.ALIGNMENT,
+        title: createCustomAlignmentDto.name,
+        content: createCustomAlignmentDto.description,
+        isActive: true,
+        metadata: JSON.stringify({ isCustom: true, characterId }),
+      },
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        sortOrder: true,
+      },
+    });
+
+    return CharacterContentMapper.toResponse(alignment);
   }
 
   async getCharacterAlignment(characterId: number) {
@@ -349,11 +392,68 @@ export class CharacterService {
         title: true,
         content: true,
         sortOrder: true,
+        metadata: true,
       },
       orderBy: [{ sortOrder: 'asc' }, { id: 'asc' }],
     });
 
-    return content.map((item) => CharacterContentMapper.toResponse(item));
+    return content
+      .filter((item) => {
+        if (type !== classContentType.ALIGNMENT) {
+          return true;
+        }
+
+        const customAlignmentOwner = this.getCustomAlignmentOwner(
+          item.metadata,
+        );
+
+        return (
+          customAlignmentOwner === null || customAlignmentOwner === characterId
+        );
+      })
+      .map(({ metadata: _metadata, ...item }) =>
+        CharacterContentMapper.toResponse(item),
+      );
+  }
+
+  private getCustomAlignmentOwner(
+    metadata: string | null,
+  ): number | null | undefined {
+    if (!metadata) {
+      return null;
+    }
+
+    try {
+      const parsedMetadata: unknown = JSON.parse(metadata);
+
+      if (
+        !parsedMetadata ||
+        typeof parsedMetadata !== 'object' ||
+        Array.isArray(parsedMetadata)
+      ) {
+        return undefined;
+      }
+
+      const customMetadata = parsedMetadata as {
+        isCustom?: unknown;
+        characterId?: unknown;
+      };
+
+      if (customMetadata.isCustom !== true) {
+        return null;
+      }
+
+      if (
+        typeof customMetadata.characterId !== 'number' ||
+        !Number.isInteger(customMetadata.characterId)
+      ) {
+        return undefined;
+      }
+
+      return customMetadata.characterId;
+    } catch {
+      return undefined;
+    }
   }
 
   private async getSelectedClassContent(

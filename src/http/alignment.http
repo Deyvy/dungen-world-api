@@ -1,13 +1,26 @@
 ### Select a class alignment
+
 POST http://localhost:3000/api/characters/5/alignments
 Content-Type: application/json
 
 {
-  "contentId": 3
+"contentId": 3
 }
 
 ### Get available class alignments
+
 GET http://localhost:3000/api/characters/5/alignments/available
 
 ### Get the character's selected alignment
+
 GET http://localhost:3000/api/characters/5/alignment
+
+### Create a custom alignment for the character
+
+POST http://localhost:3000/api/characters/5/alignments/custom
+Content-Type: application/json
+
+{
+"name": "Protect the vulnerable",
+"description": "Stand between danger and those who cannot defend themselves."
+}

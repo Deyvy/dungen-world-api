@@ -22,6 +22,7 @@ import { CreateBondDto } from './dto/create-bond.dto';
 import { UpdateBondDto } from './dto/update-bond.dto';
 import { SelectMoveDto } from './dto/select-move.dto';
 import { AddSpellsDto } from './dto/add-spells.dto';
+import { CreateCustomAlignmentDto } from './dto/create-custom-alignment.dto';
 
 @Controller('characters')
 export class CharacterController {
@@ -89,6 +90,17 @@ export class CharacterController {
   @Get(':id/alignments/available')
   getAvailableAlignments(@Param('id', ParseIntPipe) id: number) {
     return this.characterService.getAvailableAlignments(id);
+  }
+
+  @Post(':id/alignments/custom')
+  createCustomAlignment(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() createCustomAlignmentDto: CreateCustomAlignmentDto,
+  ) {
+    return this.characterService.createCustomAlignment(
+      id,
+      createCustomAlignmentDto,
+    );
   }
 
   @Get(':id/alignment')
