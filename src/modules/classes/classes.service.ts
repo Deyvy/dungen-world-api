@@ -50,8 +50,31 @@ export class ClassesService {
         },
       },
     });
+    const filteredContents = classData.contents.filter((content) => {
+      if (content.type !== 'ALIGNMENT') {
+        return true;
+      }
 
-    return ClassMapper.toDetail(classData);
+      if (!content.metadata) {
+        return true;
+      }
+
+      try {
+        const metadataObj = JSON.parse(content.metadata);
+        // Excluimos solo si es un alignment y tiene isCustom: true
+        return !metadataObj.isCustom;
+      } catch (error) {
+        // Si el JSON no es válido, lo conservamos por seguridad
+        return true;
+      }
+    });
+
+    const result = {
+      ...classData,
+      contents: filteredContents,
+    };
+
+    return ClassMapper.toDetail(result);
   }
 
   update(id: number, updateClassDto: UpdateClassDto) {
